@@ -30,3 +30,11 @@ bot.launch().then(() => {
 // Apagado limpio
 process.once('SIGINT', () => bot.stop('SIGINT'));
 process.once('SIGTERM', () => bot.stop('SIGTERM'));
+
+// Red de seguridad: evita que un error no manejado tumbe todo el proceso
+process.on('unhandledRejection', (err) => {
+  console.error('⚠️ Promesa no manejada:', err);
+});
+process.on('uncaughtException', (err) => {
+  console.error('⚠️ Excepción no capturada:', err);
+});
