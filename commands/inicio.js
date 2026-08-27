@@ -6,7 +6,8 @@ function menuPrincipal() {
     [Markup.button.callback('🏠 Inicio', 'menu_inicio'), Markup.button.callback('👨‍👩‍👧 Grupo', 'menu_grupo')],
     [Markup.button.callback('🤖 Bots', 'menu_bots'), Markup.button.callback('🛡️ Seguridad', 'menu_seguridad')],
     [Markup.button.callback('⚙️ Ajustes', 'menu_ajustes'), Markup.button.callback('🎁 Extras', 'menu_extras')],
-    [Markup.button.callback('⭐ Redes', 'menu_redes'), Markup.button.callback('❓ Ayuda', 'menu_ayuda')]
+    [Markup.button.callback('🧠 IA', 'menu_ia'), Markup.button.callback('⭐ Redes', 'menu_redes')],
+    [Markup.button.callback('❓ Ayuda', 'menu_ayuda')]
   ]);
 }
 
@@ -34,7 +35,6 @@ module.exports = (bot) => {
     try {
       await ctx.editMessageText(textoBienvenida(), { parse_mode: 'Markdown', ...menuPrincipal() });
     } catch (err) {
-      // Ignora el error si el mensaje ya tiene exactamente el mismo contenido
       if (!err.description || !err.description.includes('message is not modified')) {
         console.error('Error en menu_inicio:', err);
       }
