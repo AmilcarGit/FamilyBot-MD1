@@ -29,9 +29,16 @@ module.exports = (bot) => {
     ctx.replyWithMarkdown(textoBienvenida(), menuPrincipal());
   });
 
-  bot.action('menu_inicio', (ctx) => {
-    ctx.answerCbQuery();
-    ctx.editMessageText(textoBienvenida(), { parse_mode: 'Markdown', ...menuPrincipal() });
+  bot.action('menu_inicio', async (ctx) => {
+    await ctx.answerCbQuery().catch(() => {});
+    try {
+      await ctx.editMessageText(textoBienvenida(), { parse_mode: 'Markdown', ...menuPrincipal() });
+    } catch (err) {
+      // Ignora el error si el mensaje ya tiene exactamente el mismo contenido
+      if (!err.description || !err.description.includes('message is not modified')) {
+        console.error('Error en menu_inicio:', err);
+      }
+    }
   });
 };
 
