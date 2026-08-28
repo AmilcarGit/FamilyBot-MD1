@@ -1,17 +1,13 @@
 const { URL } = require('url');
+const { Markup } = require('telegraf');
 
 const API_URL = 'https://api.lempi.lat/dl/ytv';
 const API_KEY = 'lem_dc158e5ad3f4f6ee2de2905a222bfb68f61dd754';
 const TIMEOUT = 45000;
+const pendientes = new Map();
 
 function extraerUrl(data) {
-  const candidatos = [
-    data?.url, data?.download, data?.downloadUrl, data?.video, data?.videoUrl,
-    data?.result?.url, data?.result?.download, data?.result?.downloadUrl,
-    data?.result?.video, data?.result?.videoUrl,
-    data?.data?.url, data?.data?.download, data?.data?.downloadUrl,
-    data?.data?.video, data?.data?.videoUrl
-  ];
+  const candidatos = [data?.url, data?.download, data?.downloadUrl, data?.video, data?.videoUrl, data?.result?.url, data?.result?.download, data?.result?.downloadUrl, data?.result?.video, data?.result?.videoUrl, data?.data?.url, data?.data?.download, data?.data?.downloadUrl, data?.data?.video, data?.data?.videoUrl];
   return candidatos.find((v) => typeof v === 'string' && /^https?:\/\//i.test(v));
 }
 
@@ -28,58 +24,68 @@ function obtenerUrlYoutube(texto) {
   return null;
 }
 
+async function obtenerVideo(url) {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), TIMEOUT);
+  try {
+    const api = new URL(API_URL);
+    api.searchParams.set('url', url);
+    api.searchParams.set('apikey', API_KEY);
+    const response = await fetch(api, { headers: { Accept: 'application/json' }, signal: controller.signal });
+    if (!response.ok) throw new Error(`API HTTP ${response.status}`);
+    const data = await response.json();
+    const downloadUrl = extraerUrl(data);
+    if (!downloadUrl) throw new Error(String(data?.message || data?.error || data?.result?.message || 'La API no devolvió un enlace de video.'));
+    return { url: downloadUrl, title: data?.title || data?.result?.title || data?.data?.title || 'Video de YouTube' };
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+function botones() {
+  return Markup.inlineKeyboard([
+    [Markup.button.callback('📥 Descargar video', 'ytmp4_download')],
+    [Markup.button.callback('❌ Cancelar', 'ytmp4_cancel')]
+  ]);
+}
+
 module.exports = (bot) => {
   bot.command('ytmp4', async (ctx) => {
     const entrada = ctx.message?.text?.split(/\s+/).slice(1).join(' ').trim();
     const videoUrl = obtenerUrlYoutube(entrada || '');
-
     if (!videoUrl) return ctx.reply('❌ Usa el comando así:\n\n/ytmp4 https://youtu.be/xxxxxxxxxxx');
 
-    const mensaje = await ctx.reply('⏳ *Procesando video...*\n\n🔎 Buscando el enlace de descarga...', { parse_mode: 'Markdown' });
-    const controller = new AbortController();
-    const timer = setTimeout(() => controller.abort(), TIMEOUT);
+    pendientes.set(ctx.from.id, videoUrl);
+    return ctx.reply('🎬 *YouTube MP4*\n\n🔗 Enlace recibido correctamente.\n\nPulsa el botón para iniciar la descarga.', { parse_mode: 'Markdown', ...botones() });
+  });
+
+  bot.action('ytmp4_download', async (ctx) => {
+    await ctx.answerCbQuery('⏳ Procesando video...').catch(() => {});
+    const videoUrl = pendientes.get(ctx.from.id);
+    if (!videoUrl) return ctx.editMessageText('⚠️ Esta descarga expiró. Envía nuevamente /ytmp4 <enlace>.');
 
     try {
-      const api = new URL(API_URL);
-      api.searchParams.set('url', videoUrl);
-      api.searchParams.set('apikey', API_KEY);
-
-      const response = await fetch(api, {
-        method: 'GET',
-        headers: { Accept: 'application/json' },
-        signal: controller.signal
-      });
-
-      if (!response.ok) throw new Error(`API HTTP ${response.status}`);
-
-      const contentType = response.headers.get('content-type') || '';
-      let data;
-      if (contentType.includes('application/json')) {
-        data = await response.json();
-      } else {
-        const texto = await response.text();
-        try { data = JSON.parse(texto); } catch { throw new Error('La API no devolvió un JSON válido.'); }
-      }
-
-      const downloadUrl = extraerUrl(data);
-      if (!downloadUrl) {
-        throw new Error(String(data?.message || data?.error || data?.result?.message || 'La API no devolvió un enlace de video.'));
-      }
-
-      const titulo = data?.title || data?.result?.title || data?.data?.title || 'FamilyBot-MD';
-      await ctx.telegram.editMessageText(ctx.chat.id, mensaje.message_id, undefined, `⬇️ *Descargando...*\n\n🎬 ${String(titulo).slice(0, 180)}`, { parse_mode: 'Markdown' }).catch(() => {});
-
-      await ctx.replyWithVideo({ url: downloadUrl }, {
-        caption: `🎬 *${String(titulo).slice(0, 180)}*\n\n⚡ Descargado con FamilyBot-MD`,
-        parse_mode: 'Markdown'
-      });
-
-      await ctx.telegram.deleteMessage(ctx.chat.id, mensaje.message_id).catch(() => {});
+      await ctx.editMessageText('⏳ *Procesando video...*\n\n🔎 Obteniendo enlace de descarga...', { parse_mode: 'Markdown' });
+      const video = await obtenerVideo(videoUrl);
+      await ctx.editMessageText('⬇️ *Descargando video...*\n\n🎬 ' + String(video.title).slice(0, 180), { parse_mode: 'Markdown' });
+      await ctx.replyWithVideo({ url: video.url }, { caption: `🎬 *${String(video.title).slice(0, 180)}*\n\n⚡ FamilyBot-MD`, parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback('🔄 Descargar otra vez', 'ytmp4_again')]]) });
+      pendientes.delete(ctx.from.id);
     } catch (error) {
-      const texto = error.name === 'AbortError' ? '⏱️ La API tardó demasiado en responder.' : `❌ No se pudo descargar el video.\n\n${error.message}`;
-      await ctx.telegram.editMessageText(ctx.chat.id, mensaje.message_id, undefined, texto).catch(() => ctx.reply(texto));
-    } finally {
-      clearTimeout(timer);
+      const mensaje = error.name === 'AbortError' ? '⏱️ La API tardó demasiado en responder.' : `❌ No se pudo descargar el video.\n\n${error.message}`;
+      await ctx.editMessageText(mensaje, botones()).catch(() => ctx.reply(mensaje));
     }
+  });
+
+  bot.action('ytmp4_again', async (ctx) => {
+    await ctx.answerCbQuery().catch(() => {});
+    const videoUrl = pendientes.get(ctx.from.id);
+    if (!videoUrl) return ctx.reply('⚠️ Envía nuevamente /ytmp4 <enlace>.');
+    await ctx.editMessageText('🎬 *YouTube MP4*\n\nPulsa el botón para descargar nuevamente.', { parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback('📥 Descargar video', 'ytmp4_download')],[Markup.button.callback('❌ Cancelar', 'ytmp4_cancel')]]) });
+  });
+
+  bot.action('ytmp4_cancel', async (ctx) => {
+    pendientes.delete(ctx.from.id);
+    await ctx.answerCbQuery('Descarga cancelada').catch(() => {});
+    return ctx.editMessageText('❌ Descarga cancelada.');
   });
 };
