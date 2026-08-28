@@ -1,0 +1,20 @@
+# Secret configuration
+.env
+.env.*
+!.env.example
+
+# Local database and runtime data
+data/
+
+# Dependencies
+node_modules/
+
+# Logs
+*.log
+npm-debug.log*
+
+# OS / editor files
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
