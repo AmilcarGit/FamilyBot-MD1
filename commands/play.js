@@ -1,11 +1,11 @@
 const { URL } = require('url');
 const { Markup } = require('telegraf');
+const yts = require('yt-search');
+const { download, cleanup } = require('../lib/youtube');
 
-const API_URL = 'https://api.delirius.store/download/ytmp3';
-const TIMEOUT = 45000;
 const pendientes = new Map();
 
-function obtenerUrlYoutube(texto) {
+function youtubeUrl(texto) {
   try {
     const url = new URL(texto);
     const host = url.hostname.replace(/^www\./, '').toLowerCase();
@@ -18,33 +18,6 @@ function obtenerUrlYoutube(texto) {
   return null;
 }
 
-async function editar(ctx, texto, opciones = {}) {
-  const msg = ctx.callbackQuery?.message;
-  try {
-    if (msg?.text === texto) return;
-    if (msg?.text != null) return await ctx.editMessageText(texto, opciones);
-    if (msg?.caption != null) return await ctx.editMessageCaption(texto, opciones);
-    return await ctx.reply(texto, opciones);
-  } catch (e) {
-    if (e?.response?.error_code === 400 && /not modified|there is no text|message is not modified/i.test(e?.response?.description || '')) return;
-    throw e;
-  }
-}
-
-async function obtenerAudio(url) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT);
-  try {
-    const api = new URL(API_URL);
-    api.searchParams.set('url', url);
-    const response = await fetch(api, { headers: { Accept: 'application/json' }, signal: controller.signal });
-    if (!response.ok) throw new Error(`Delirius HTTP ${response.status}`);
-    const data = await response.json();
-    if (!data?.status || !data?.data?.download) throw new Error(data?.message || 'Delirius no devolvió el audio.');
-    return { url: data.data.download, title: data.data.title || 'Audio de YouTube' };
-  } finally { clearTimeout(timer); }
-}
-
 function botones(userId) {
   return Markup.inlineKeyboard([
     [Markup.button.callback('🎵 Descargar música', `play_download_${userId}`)],
@@ -55,27 +28,46 @@ function botones(userId) {
 module.exports = bot => {
   bot.command('play', async ctx => {
     const entrada = ctx.message?.text?.split(/\s+/).slice(1).join(' ').trim();
-    const videoUrl = obtenerUrlYoutube(entrada || '');
-    if (!videoUrl) return ctx.reply('❌ Usa el comando así:\n\n/play https://youtu.be/xxxxxxxxxxx');
-    pendientes.set(ctx.from.id, videoUrl);
-    return ctx.reply('🎵 *YouTube Música*\n\n🔗 Enlace recibido correctamente.\n\nPulsa el botón para descargar el audio.', { parse_mode: 'Markdown', ...botones(ctx.from.id) });
+    if (!entrada) return ctx.reply('🎵 Usa /play con un enlace o nombre de canción.');
+    try {
+      let videoUrl = youtubeUrl(entrada);
+      let title = entrada;
+      if (!videoUrl) {
+        const result = await yts(entrada);
+        const video = result.videos?.[0];
+        if (!video) return ctx.reply('❌ No encontré esa canción en YouTube.');
+        videoUrl = video.url;
+        title = video.title;
+      }
+      pendientes.set(ctx.from.id, videoUrl);
+      return ctx.reply(`🎵 *${String(title).slice(0, 180)}*\n\n🔗 Listo para descargar el audio.\n\nPulsa el botón:`, { parse_mode: 'Markdown', ...botones(ctx.from.id) });
+    } catch (error) {
+      return ctx.reply(`❌ No se pudo buscar la canción.\n\n${error.message}`);
+    }
   });
 
   bot.action(/^play_download_(\d+)$/, async ctx => {
     const userId = Number(ctx.match[1]);
     if (ctx.from.id !== userId) return ctx.answerCbQuery('⚠️ Esta descarga pertenece a otro usuario.', { show_alert: true });
-    await ctx.answerCbQuery('⏳ Procesando audio...').catch(() => {});
+    await ctx.answerCbQuery('⏳ Descargando audio...').catch(() => {});
     const videoUrl = pendientes.get(userId);
-    if (!videoUrl) return editar(ctx, '⚠️ Esta descarga expiró. Envía nuevamente /play <enlace>.');
+    if (!videoUrl) return ctx.reply('⚠️ Esta descarga expiró. Usa /play nuevamente.');
+    let file;
     try {
-      await editar(ctx, '⏳ *Procesando música...*\n\n🔎 Delirius está preparando el audio...', { parse_mode: 'Markdown' });
-      const audio = await obtenerAudio(videoUrl);
-      await editar(ctx, '⬇️ *Enviando música...*\n\n🎵 ' + String(audio.title).slice(0, 180), { parse_mode: 'Markdown' });
-      await ctx.replyWithAudio({ url: audio.url }, { title: String(audio.title).slice(0, 180), caption: `🎵 *${String(audio.title).slice(0, 180)}*\n\n⚡ FamilyBot-MD`, parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback('🔄 Descargar otra vez', `play_again_${userId}`)]]) });
-      pendientes.delete(userId);
+      await ctx.editMessageText('⏳ *Descargando música...*\n\n⚙️ Motor local yt-dlp', { parse_mode: 'Markdown' }).catch(() => {});
+      const audio = await download(videoUrl, 'audio');
+      file = audio.path;
+      await ctx.replyWithAudio({ source: file }, {
+        title: String(audio.title).slice(0, 180),
+        caption: `🎵 *${String(audio.title).slice(0, 180)}*\n\n⚡ FamilyBot-MD`,
+        parse_mode: 'Markdown',
+        ...Markup.inlineKeyboard([[Markup.button.callback('🔄 Descargar otra vez', `play_again_${userId}`)]])
+      });
+      await ctx.editMessageText('✅ Música enviada correctamente.').catch(() => {});
     } catch (error) {
-      const mensaje = error.name === 'AbortError' ? '⏱️ Delirius tardó demasiado en responder.' : `❌ No se pudo descargar la música.\n\n${error.message}`;
-      try { await editar(ctx, mensaje, botones(userId)); } catch { await ctx.reply(mensaje).catch(() => {}); }
+      await ctx.editMessageText(`❌ No se pudo descargar la música.\n\n${error.message}`, botones(userId)).catch(() => ctx.reply(`❌ ${error.message}`));
+    } finally {
+      if (file) cleanup(file);
     }
   });
 
@@ -83,9 +75,8 @@ module.exports = bot => {
     const userId = Number(ctx.match[1]);
     if (ctx.from.id !== userId) return ctx.answerCbQuery('⚠️ Esta descarga pertenece a otro usuario.', { show_alert: true });
     await ctx.answerCbQuery().catch(() => {});
-    const videoUrl = pendientes.get(userId);
-    if (!videoUrl) return ctx.reply('⚠️ Envía nuevamente /play <enlace>.');
-    return ctx.reply('🎵 *YouTube Música*\n\nPulsa el botón para descargar nuevamente.', { parse_mode: 'Markdown', ...botones(userId) });
+    if (!pendientes.has(userId)) return ctx.reply('⚠️ Usa /play nuevamente.');
+    return ctx.reply('🎵 Pulsa para descargar nuevamente:', botones(userId));
   });
 
   bot.action(/^play_cancel_(\d+)$/, async ctx => {
@@ -93,6 +84,6 @@ module.exports = bot => {
     if (ctx.from.id !== userId) return ctx.answerCbQuery('⚠️ Esta descarga pertenece a otro usuario.', { show_alert: true });
     pendientes.delete(userId);
     await ctx.answerCbQuery('Descarga cancelada').catch(() => {});
-    return editar(ctx, '❌ Descarga de música cancelada.');
+    return ctx.editMessageText('❌ Descarga cancelada.').catch(() => ctx.reply('❌ Descarga cancelada.'));
   });
 };
