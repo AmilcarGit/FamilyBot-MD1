@@ -17,6 +17,8 @@ function comandos(grupo) {
     `/menu — ${t(grupo, 'menuPrincipal')}\n` +
     `/ayuda — ${t(grupo, 'esteMensaje')}\n` +
     `/frase — ${t(grupo, 'fraseFamilia')}\n\n` +
+    `📥 *DESCARGAS*\n` +
+    `/ytmp4 <url> — Descargar video de YouTube\n\n` +
     `👥 *${t(grupo, 'categoriaGrupo')}*\n` +
     `/grupo — ${t(grupo, 'infoGrupo')}\n` +
     `/admins — ${t(grupo, 'listaAdmins')}\n` +
