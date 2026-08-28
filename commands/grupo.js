@@ -30,7 +30,7 @@ async function obtenerAdmins(ctx) {
 
 async function obtenerMiembros(ctx) {
   try {
-    return await ctx.telegram.getChatMemberCount(ctx.chat.id);
+    return await ctx.telegram.callApi('getChatMemberCount', { chat_id: ctx.chat.id });
   } catch (error) {
     console.error(`⚠️ Miembros: ${error.message}`);
     return null;
@@ -46,7 +46,7 @@ async function obtenerTexto(ctx) {
     isBotAdmin(ctx)
   ]);
 
-  db.setGrupo(ctx.chat.id, {
+  const grupoActualizado = db.setGrupo(ctx.chat.id, {
     type: chat.type,
     title: chat.title || null,
     username: chat.username || null,
@@ -56,9 +56,9 @@ async function obtenerTexto(ctx) {
   const adminsHumanos = administradores.filter((admin) => !admin.user.is_bot);
   const listaAdmins = adminsHumanos.length
     ? adminsHumanos.slice(0, 8).map((admin) => `• ${admin.user.first_name}${admin.user.last_name ? ` ${admin.user.last_name}` : ''}${admin.user.username ? ` (@${admin.user.username})` : ''}`).join('\n')
-    : `• ${t(grupo, 'noDisponible')}`;
+    : `• ${t(grupoActualizado, 'noDisponible')}`;
 
-  return `👥 ${BOT_NAME}\n\n📝 ${t(grupo, 'nombre')}: ${chat.title || t(grupo, 'sinNombre')}\n🆔 ${t(grupo, 'id')}: ${chat.id}\n🔗 ${t(grupo, 'username')}: ${chat.username ? `@${chat.username}` : t(grupo, 'noDisponible')}\n👤 ${t(grupo, 'miembros')}: ${miembros ?? t(grupo, 'noDisponible')}\n\n👑 ${t(grupo, 'administradores')} (${adminsHumanos.length})\n${listaAdmins}\n\n🤖 ${t(grupo, 'botAdministrador')}: ${botAdmin ? `✅ ${t(grupo, 'si')}` : `❌ ${t(grupo, 'no')}`}\n🛡️ ${t(grupo, 'antilink')}: ${estado(grupo.antilink, grupo)}\n🌐 ${t(grupo, 'idioma')}: ${grupo.language}\n🔤 ${t(grupo, 'prefijo')}: ${grupo.prefix}`;
+  return `👥 ${BOT_NAME}\n\n📝 ${t(grupoActualizado, 'nombre')}: ${chat.title || t(grupoActualizado, 'sinNombre')}\n🆔 ${t(grupoActualizado, 'id')}: ${chat.id}\n🔗 ${t(grupoActualizado, 'username')}: ${chat.username ? `@${chat.username}` : t(grupoActualizado, 'noDisponible')}\n👤 ${t(grupoActualizado, 'miembros')}: ${miembros ?? t(grupoActualizado, 'noDisponible')}\n\n👑 ${t(grupoActualizado, 'administradores')} (${adminsHumanos.length})\n${listaAdmins}\n\n🤖 ${t(grupoActualizado, 'botAdministrador')}: ${botAdmin ? `✅ ${t(grupoActualizado, 'si')}` : `❌ ${t(grupoActualizado, 'no')}`}\n🛡️ ${t(grupoActualizado, 'antilink')}: ${estado(grupoActualizado.antilink, grupoActualizado)}\n🌐 ${t(grupoActualizado, 'idioma')}: ${grupoActualizado.language}\n🔤 ${t(grupoActualizado, 'prefijo')}: ${grupoActualizado.prefix}`;
 }
 
 module.exports = (bot) => {
