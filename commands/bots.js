@@ -1,5 +1,7 @@
 const os = require('os');
 const { startTime, BOT_NAME } = require('../lib/config');
+const db = require('../lib/db');
+const { t } = require('../lib/i18n');
 
 function formatUptime(ms) {
   const s = Math.floor(ms / 1000);
@@ -12,14 +14,15 @@ function formatUptime(ms) {
 module.exports = (bot) => {
   const responder = async (ctx) => {
     if (ctx.updateType === 'callback_query') await ctx.answerCbQuery();
+    const grupo = ctx.chat?.type !== 'private' ? db.getGrupo(ctx.chat.id) : { language: 'es' };
     const uptime = formatUptime(Date.now() - startTime);
     const ram = (os.totalmem() - os.freemem()) / 1024 / 1024;
-    ctx.replyWithMarkdown(
-      `🤖 *${BOT_NAME} — Estado del Sistema*\n\n` +
-      `🟢 *Estado:* Online 24/7\n` +
-      `⏱️ *Uptime:* ${uptime}\n` +
-      `💾 *RAM usada:* ${ram.toFixed(1)} MB\n` +
-      `🖥️ *Plataforma:* ${os.platform()}\n` +
+    return ctx.replyWithMarkdown(
+      `🤖 *${BOT_NAME} — ${t(grupo, 'estadoSistema')}*\n\n` +
+      `🟢 *${t(grupo, 'estado')}:* Online 24/7\n` +
+      `⏱️ *${t(grupo, 'uptime')}:* ${uptime}\n` +
+      `💾 *${t(grupo, 'ram')}:* ${ram.toFixed(1)} MB\n` +
+      `🖥️ *${t(grupo, 'plataforma')}:* ${os.platform()}\n` +
       `📦 *Node:* ${process.version}`
     );
   };
