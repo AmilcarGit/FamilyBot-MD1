@@ -12,12 +12,15 @@ const erroresConfig = validarConfig();
 
 if (erroresConfig.length) {
   console.error(`❌ Configuración incompleta o inválida: ${erroresConfig.join(', ')}`);
-  console.error('   Revisa tu archivo .env antes de iniciar el bot.');
+  console.error('Revisa tu archivo .env antes de iniciar el bot.');
   process.exit(1);
 }
 
 const bot = new Telegraf(BOT_TOKEN);
 const commandsPath = path.join(__dirname, 'commands');
+let comandosCargados = 0;
+let iniciado = false;
+let apagando = false;
 
 function cargarComandos() {
   if (!fs.existsSync(commandsPath)) {
@@ -32,31 +35,52 @@ function cargarComandos() {
     throw new Error('No se encontraron comandos en commands/.');
   }
 
+  console.log('');
+  console.log('📦 Cargando comandos...');
+
   for (const file of archivos) {
     const ruta = path.join(commandsPath, file);
 
     try {
+      delete require.cache[require.resolve(ruta)];
       const registrar = require(ruta);
+
       if (typeof registrar !== 'function') {
         throw new TypeError('El módulo debe exportar una función (bot) => {...}.');
       }
 
       registrar(bot);
-      console.log(`✅ Comando cargado: ${file}`);
+      comandosCargados += 1;
+      console.log(`   ✅ ${file}`);
     } catch (error) {
-      console.error(`❌ No se pudo cargar ${file}: ${error.message}`);
+      console.error(`   ❌ ${file}: ${error.message}`);
       throw error;
     }
   }
+
+  console.log(`📦 ${comandosCargados} comandos cargados correctamente.`);
 }
 
-// Middleware global: registra usuarios y grupos sin bloquear los comandos.
+function mostrarInicio() {
+  console.log('');
+  console.log('╔══════════════════════════════════════╗');
+  console.log(`║  🤖 ${BOT_NAME.padEnd(30)}║`);
+  console.log('║  🟢 BOT ONLINE                       ║');
+  console.log(`║  📦 Comandos: ${String(comandosCargados).padEnd(21)}║`);
+  console.log('║  🌐 Telegram: conectado              ║');
+  console.log('╚══════════════════════════════════════╝');
+  console.log('');
+  console.log('Escribe Ctrl+C para detener el bot.');
+  console.log('');
+}
+
 registrarMiddleware(bot);
 
 try {
   cargarComandos();
 } catch (error) {
-  console.error('❌ Error fatal cargando comandos:', error);
+  console.error('');
+  console.error(`❌ Error fatal cargando comandos: ${error.message}`);
   process.exit(1);
 }
 
@@ -65,21 +89,16 @@ bot.catch((error, ctx) => {
   const chatId = ctx?.chat?.id || 'sin chat';
   const userId = ctx?.from?.id || 'sin usuario';
 
-  console.error(
-    `⚠️ Error manejado | update=${updateType} | chat=${chatId} | user=${userId} | ${error.message}`
-  );
+  console.error(`⚠️ Error | update=${updateType} | chat=${chatId} | user=${userId} | ${error.message}`);
 });
-
-let iniciado = false;
-let apagando = false;
 
 async function iniciar() {
   try {
     await bot.launch();
     iniciado = true;
-    console.log(`🟢 ${BOT_NAME} está online — SYSTEM ONLINE`);
+    mostrarInicio();
   } catch (error) {
-    console.error(`❌ No se pudo iniciar ${BOT_NAME}:`, error.message);
+    console.error(`❌ No se pudo iniciar ${BOT_NAME}: ${error.message}`);
     process.exit(1);
   }
 }
@@ -88,11 +107,13 @@ async function apagar(signal) {
   if (apagando) return;
   apagando = true;
 
-  console.log(`🛑 Recibida señal ${signal}. Cerrando bot...`);
+  console.log('');
+  console.log(`🛑 Cerrando ${BOT_NAME}...`);
 
   try {
     if (iniciado) bot.stop(signal);
   } finally {
+    console.log('🔴 Bot detenido correctamente.');
     process.exit(0);
   }
 }
@@ -101,12 +122,11 @@ process.once('SIGINT', () => apagar('SIGINT'));
 process.once('SIGTERM', () => apagar('SIGTERM'));
 
 process.on('unhandledRejection', (error) => {
-  console.error('⚠️ Promesa no manejada:', error);
+  console.error(`⚠️ Promesa no manejada: ${error?.message || error}`);
 });
 
 process.on('uncaughtException', (error) => {
-  console.error('❌ Excepción no capturada:', error);
-  // Dejamos que el supervisor (PM2/systemd/etc.) decida si debe reiniciar el proceso.
+  console.error(`❌ Excepción no capturada: ${error.message}`);
   process.exit(1);
 });
 
