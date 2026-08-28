@@ -1,23 +1,25 @@
 const { BOT_NAME } = require('../lib/config');
+const db = require('../lib/db');
+const { t } = require('../lib/i18n');
 
 module.exports = (bot) => {
   const responder = async (ctx) => {
     if (ctx.updateType === 'callback_query') await ctx.answerCbQuery();
-    ctx.replyWithMarkdown(
-      `❓ *Ayuda — ${BOT_NAME}*\n\n` +
-      `/start — Menú principal\n` +
-      `/grupo — Info del grupo\n` +
-      `/bots — Estado del sistema\n` +
-      `/seguridad — Panel de seguridad\n` +
-      `/antilink on|off — Moderación de links\n` +
-      `/ajustes — Configuración\n` +
-      `/extras — Funciones extra\n` +
-      `/frase — Frase random de la familia\n` +
-      `/ia <pregunta> — Pregúntale a la IA\n` +
-      `/resetia — Borra tu historial con la IA\n` +
-      `/redes — Redes sociales\n` +
-      `/ayuda — Este mensaje`
-    );
+    const grupo = ctx.chat?.type !== 'private' ? db.getGrupo(ctx.chat.id) : { language: 'es' };
+    const texto = `❓ *${t(grupo, 'ayudaTitulo', { bot: BOT_NAME })}*\n\n` +
+      `/start — ${t(grupo, 'menuPrincipal')}\n` +
+      `/grupo — ${t(grupo, 'infoGrupo')}\n` +
+      `/bots — ${t(grupo, 'estadoSistema')}\n` +
+      `/seguridad — ${t(grupo, 'panelSeguridad')}\n` +
+      `/antilink on|off — ${t(grupo, 'moderacionLinks')}\n` +
+      `/ajustes — ${t(grupo, 'configuracion')}\n` +
+      `/extras — ${t(grupo, 'funcionesExtra')}\n` +
+      `/frase — ${t(grupo, 'fraseFamilia')}\n` +
+      `/ia <pregunta> — ${t(grupo, 'preguntaIA')}\n` +
+      `/resetia — ${t(grupo, 'borrarHistorial')}\n` +
+      `/redes — ${t(grupo, 'redesSociales')}\n` +
+      `/ayuda — ${t(grupo, 'esteMensaje')}`;
+    return ctx.replyWithMarkdown(texto);
   };
 
   bot.command('ayuda', responder);
