@@ -1,7 +1,6 @@
 const { BOT_NAME, familia } = require('../lib/config');
 const db = require('../lib/db');
 const { t } = require('../lib/i18n');
-const { imagenAleatoria } = require('../lib/menu-media');
 const { Markup } = require('telegraf');
 
 function menuPrincipal(grupo) {
@@ -20,7 +19,7 @@ function textoBienvenida(grupo) {
 }
 
 async function enviarMenu(ctx, grupo) {
-  return ctx.replyWithPhoto({ url: imagenAleatoria() }, { caption: textoBienvenida(grupo), parse_mode: 'Markdown', ...menuPrincipal(grupo) });
+  return ctx.reply(textoBienvenida(grupo), { parse_mode: 'Markdown', ...menuPrincipal(grupo) });
 }
 
 module.exports = (bot) => {
@@ -36,7 +35,7 @@ module.exports = (bot) => {
     await ctx.answerCbQuery().catch(() => {});
     const grupo = ctx.chat?.type !== 'private' ? db.getGrupo(ctx.chat.id) : { language: 'es' };
     try {
-      await ctx.editMessageMedia({ type: 'photo', media: imagenAleatoria(), caption: textoBienvenida(grupo), parse_mode: 'Markdown' }, menuPrincipal(grupo));
+      await ctx.editMessageText(textoBienvenida(grupo), { parse_mode: 'Markdown', ...menuPrincipal(grupo) });
     } catch (error) {
       if (!error.description?.includes('message is not modified')) throw error;
     }
