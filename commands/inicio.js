@@ -1,43 +1,39 @@
-const { Markup } = require('telegraf');
 const { BOT_NAME, familia } = require('../lib/config');
+const db = require('../lib/db');
+const { t } = require('../lib/i18n');
+const { Markup } = require('telegraf');
 
-function menuPrincipal() {
+function menuPrincipal(grupo) {
   return Markup.inlineKeyboard([
-    [Markup.button.callback('🏠 Inicio', 'menu_inicio'), Markup.button.callback('👨‍👩‍👧 Grupo', 'menu_grupo')],
-    [Markup.button.callback('🤖 Bots', 'menu_bots'), Markup.button.callback('🛡️ Seguridad', 'menu_seguridad')],
-    [Markup.button.callback('⚙️ Ajustes', 'menu_ajustes'), Markup.button.callback('🎁 Extras', 'menu_extras')],
-    [Markup.button.callback('🧠 IA', 'menu_ia'), Markup.button.callback('⭐ Redes', 'menu_redes')],
-    [Markup.button.callback('❓ Ayuda', 'menu_ayuda')]
+    [Markup.button.callback(t(grupo, 'inicio'), 'menu_inicio'), Markup.button.callback(t(grupo, 'grupo'), 'menu_grupo')],
+    [Markup.button.callback(t(grupo, 'bots'), 'menu_bots'), Markup.button.callback(t(grupo, 'seguridad'), 'menu_seguridad')],
+    [Markup.button.callback(t(grupo, 'ajustes'), 'menu_ajustes'), Markup.button.callback(t(grupo, 'extras'), 'menu_extras')],
+    [Markup.button.callback(t(grupo, 'ia'), 'menu_ia'), Markup.button.callback(t(grupo, 'redes'), 'menu_redes')],
+    [Markup.button.callback(t(grupo, 'ayuda'), 'menu_ayuda')]
   ]);
 }
 
-function textoBienvenida() {
-  const lista = familia.map(f => `• *${f.nombre}* — ${f.frase}`).join('\n');
-  return (
-    `👑 *${BOT_NAME}*\n` +
-    `_Una Familia · Un Bot · Sin Límites_ ❤️\n\n` +
-    `${lista}\n\n` +
-    `Selecciona una opción del menú:`
-  );
+function textoBienvenida(grupo) {
+  const lista = familia.map((f) => `• *${f.nombre}* — ${f.frase}`).join('\n');
+  return `👑 *${BOT_NAME}*\n_${t(grupo, 'lema')}_ ❤️\n\n${lista}\n\n${t(grupo, 'seleccionar')}`;
 }
 
 module.exports = (bot) => {
-  bot.start((ctx) => {
-    ctx.replyWithMarkdown(textoBienvenida(), menuPrincipal());
-  });
+  const responder = (ctx) => {
+    const grupo = ctx.chat?.type !== 'private' ? db.getGrupo(ctx.chat.id) : { language: 'es' };
+    return ctx.replyWithMarkdown(textoBienvenida(grupo), menuPrincipal(grupo));
+  };
 
-  bot.command('menu', (ctx) => {
-    ctx.replyWithMarkdown(textoBienvenida(), menuPrincipal());
-  });
+  bot.start(responder);
+  bot.command('menu', responder);
 
   bot.action('menu_inicio', async (ctx) => {
     await ctx.answerCbQuery().catch(() => {});
+    const grupo = ctx.chat?.type !== 'private' ? db.getGrupo(ctx.chat.id) : { language: 'es' };
     try {
-      await ctx.editMessageText(textoBienvenida(), { parse_mode: 'Markdown', ...menuPrincipal() });
-    } catch (err) {
-      if (!err.description || !err.description.includes('message is not modified')) {
-        console.error('Error en menu_inicio:', err);
-      }
+      await ctx.editMessageText(textoBienvenida(grupo), { parse_mode: 'Markdown', ...menuPrincipal(grupo) });
+    } catch (error) {
+      if (!error.description?.includes('message is not modified')) throw error;
     }
   });
 };
