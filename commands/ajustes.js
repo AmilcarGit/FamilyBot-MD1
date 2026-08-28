@@ -2,6 +2,22 @@ const { BOT_NAME } = require('../lib/config');
 const db = require('../lib/db');
 const { requireAdmin, isGroup } = require('../lib/permissions');
 
+function menuAjustes(grupo) {
+  return {
+    reply_markup: {
+      inline_keyboard: [
+        [{ text: `🛡️ Antilink ${grupo.antilink ? 'ON' : 'OFF'}`, callback_data: 'ajustes_antilink' }],
+        [{ text: '🌐 Idioma', callback_data: 'ajustes_idioma' }, { text: '🔤 Prefijo', callback_data: 'ajustes_prefijo' }],
+        [{ text: '🛡️ Seguridad', callback_data: 'menu_seguridad' }, { text: '⬅️ Inicio', callback_data: 'menu_inicio' }]
+      ]
+    }
+  };
+}
+
+function textoAjustes(grupo) {
+  return `⚙️ Ajustes de ${BOT_NAME}\n\n🛡️ Antilink: ${grupo.antilink ? '✅ Activado' : '❌ Desactivado'}\n🌐 Idioma: ${grupo.language}\n🔤 Prefijo: ${grupo.prefix}\n\nSelecciona una opción:`;
+}
+
 module.exports = (bot) => {
   const responder = async (ctx) => {
     if (ctx.updateType === 'callback_query') await ctx.answerCbQuery();
@@ -12,22 +28,11 @@ module.exports = (bot) => {
 
     const grupo = db.getGrupo(ctx.chat.id);
 
-    return ctx.replyWithMarkdown(
-      `⚙️ *Ajustes de ${BOT_NAME}*\n\n` +
-      `🛡️ Antilink: ${grupo.antilink ? '✅ Activado' : '❌ Desactivado'}\n` +
-      `🌐 Idioma: ${grupo.language}\n` +
-      `🔤 Prefijo: ${grupo.prefix}\n\n` +
-      `Selecciona una opción:` ,
-      {
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: `🛡️ Antilink ${grupo.antilink ? 'ON' : 'OFF'}`, callback_data: 'ajustes_antilink' }],
-            [{ text: '🌐 Idioma', callback_data: 'ajustes_idioma' }, { text: '🔤 Prefijo', callback_data: 'ajustes_prefijo' }],
-            [{ text: '🛡️ Seguridad', callback_data: 'menu_seguridad' }, { text: '⬅️ Inicio', callback_data: 'menu_inicio' }]
-          ]
-        }
-      }
-    );
+    if (ctx.updateType === 'callback_query') {
+      return ctx.editMessageText(textoAjustes(grupo), menuAjustes(grupo));
+    }
+
+    return ctx.reply(textoAjustes(grupo), menuAjustes(grupo));
   };
 
   bot.command('ajustes', responder);
@@ -41,18 +46,7 @@ module.exports = (bot) => {
     const grupo = db.getGrupo(ctx.chat.id);
     const actualizado = db.setGrupo(ctx.chat.id, { antilink: !grupo.antilink });
 
-    return ctx.editMessageText(
-      `⚙️ Ajustes de ${BOT_NAME}\n\n🛡️ Antilink: ${actualizado.antilink ? '✅ Activado' : '❌ Desactivado'}\n🌐 Idioma: ${actualizado.language}\n🔤 Prefijo: ${actualizado.prefix}`,
-      {
-        reply_markup: {
-          inline_keyboard: [
-            [{ text: `🛡️ Antilink ${actualizado.antilink ? 'ON' : 'OFF'}`, callback_data: 'ajustes_antilink' }],
-            [{ text: '🌐 Idioma', callback_data: 'ajustes_idioma' }, { text: '🔤 Prefijo', callback_data: 'ajustes_prefijo' }],
-            [{ text: '🛡️ Seguridad', callback_data: 'menu_seguridad' }, { text: '⬅️ Inicio', callback_data: 'menu_inicio' }]
-          ]
-        }
-      }
-    );
+    return ctx.editMessageText(textoAjustes(actualizado), menuAjustes(actualizado));
   });
 
   bot.action('ajustes_idioma', async (ctx) => {
@@ -60,8 +54,10 @@ module.exports = (bot) => {
 
     if (!(await requireAdmin(ctx))) return;
 
+    const grupo = db.getGrupo(ctx.chat.id);
+
     return ctx.editMessageText(
-      `🌐 Idioma del grupo\n\nIdioma actual: ${db.getGrupo(ctx.chat.id).language}\n\nSelecciona el idioma:`,
+      `🌐 Idioma del grupo\n\nIdioma actual: ${grupo.language}\n\nSelecciona el idioma:`,
       {
         reply_markup: {
           inline_keyboard: [
@@ -80,7 +76,6 @@ module.exports = (bot) => {
       if (!(await requireAdmin(ctx))) return;
 
       db.setGrupo(ctx.chat.id, { language: idioma });
-
       return responder(ctx);
     });
   }
@@ -90,8 +85,10 @@ module.exports = (bot) => {
 
     if (!(await requireAdmin(ctx))) return;
 
+    const grupo = db.getGrupo(ctx.chat.id);
+
     return ctx.editMessageText(
-      `🔤 Prefijo de comandos\n\nPrefijo actual: ${db.getGrupo(ctx.chat.id).prefix}\n\nPara cambiarlo usa:\n/prefijo !\n/prefijo .\n/prefijo /`,
+      `🔤 Prefijo de comandos\n\nPrefijo actual: ${grupo.prefix}\n\nPara cambiarlo usa:\n/prefijo !\n/prefijo .\n/prefijo /`,
       {
         reply_markup: {
           inline_keyboard: [[{ text: '⬅️ Ajustes', callback_data: 'menu_ajustes' }]]
