@@ -1,67 +1,88 @@
 const { BOT_NAME } = require('../lib/config');
 const db = require('../lib/db');
-const { isGroup, isBotAdmin, getMemberStatus } = require('../lib/permissions');
+const { t } = require('../lib/i18n');
+const { isGroup, isBotAdmin } = require('../lib/permissions');
 
-function menuGrupo() {
+function menuGrupo(grupo) {
   return {
     reply_markup: {
       inline_keyboard: [
-        [{ text: '⚙️ Ajustes', callback_data: 'menu_ajustes' }, { text: '🛡️ Seguridad', callback_data: 'menu_seguridad' }],
-        [{ text: '🔄 Actualizar', callback_data: 'grupo_actualizar' }, { text: '⬅️ Inicio', callback_data: 'menu_inicio' }]
+        [{ text: `👥 ${t(grupo, 'grupo')}`, callback_data: 'menu_grupo' }],
+        [{ text: `👑 ${t(grupo, 'admin')}`, callback_data: 'menu_admins' }, { text: t(grupo, 'seguridad'), callback_data: 'menu_seguridad' }],
+        [{ text: `🔄 ${t(grupo, 'actualizar')}`, callback_data: 'grupo_actualizar' }, { text: t(grupo, 'inicio'), callback_data: 'menu_inicio' }]
       ]
     }
   };
 }
 
-function estado(valor) {
-  return valor ? '✅ Activado' : '❌ Desactivado';
+function estado(valor, grupo) {
+  return valor ? `✅ ${t(grupo, 'activado')}` : `❌ ${t(grupo, 'desactivado')}`;
 }
 
-async function obtenerAdministradores(ctx) {
-  const administradores = await ctx.telegram.getChatAdministrators(ctx.chat.id);
-  return administradores.filter((admin) => !admin.user.is_bot);
+async function obtenerAdmins(ctx) {
+  try {
+    return await ctx.telegram.getChatAdministrators(ctx.chat.id);
+  } catch (error) {
+    console.error(`⚠️ Administradores: ${error.message}`);
+    return [];
+  }
+}
+
+async function obtenerMiembros(ctx) {
+  try {
+    return await ctx.telegram.getChatMemberCount(ctx.chat.id);
+  } catch (error) {
+    console.error(`⚠️ Miembros: ${error.message}`);
+    return null;
+  }
 }
 
 async function obtenerTexto(ctx) {
-  const chat = await ctx.telegram.getChat(ctx.chat.id);
-  const miembros = await ctx.telegram.getChatMemberCount(ctx.chat.id);
-  const administradores = await obtenerAdministradores(ctx);
-  const botAdmin = await isBotAdmin(ctx);
+  const chat = ctx.chat;
   const grupo = db.getGrupo(ctx.chat.id);
+  const [miembros, administradores, botAdmin] = await Promise.all([
+    obtenerMiembros(ctx),
+    obtenerAdmins(ctx),
+    isBotAdmin(ctx)
+  ]);
 
   db.setGrupo(ctx.chat.id, {
-    title: chat.title || ctx.chat.title || 'Sin nombre',
+    type: chat.type,
+    title: chat.title || null,
     username: chat.username || null,
     memberCount: miembros
   });
 
-  const listaAdmins = administradores.length
-    ? administradores.slice(0, 8).map((admin) => `• ${admin.user.first_name}${admin.user.username ? ` (@${admin.user.username})` : ''}`).join('\n')
-    : '• No disponible';
+  const adminsHumanos = administradores.filter((admin) => !admin.user.is_bot);
+  const listaAdmins = adminsHumanos.length
+    ? adminsHumanos.slice(0, 8).map((admin) => `• ${admin.user.first_name}${admin.user.last_name ? ` ${admin.user.last_name}` : ''}${admin.user.username ? ` (@${admin.user.username})` : ''}`).join('\n')
+    : `• ${t(grupo, 'noDisponible')}`;
 
-  return `👥 ${BOT_NAME}\n\n📝 Nombre: ${chat.title || ctx.chat.title || 'Sin nombre'}\n🆔 ID: ${ctx.chat.id}\n🔗 Username: ${chat.username ? `@${chat.username}` : 'No disponible'}\n👤 Miembros: ${miembros}\n\n👑 Administradores (${administradores.length})\n${listaAdmins}\n\n🤖 Bot administrador: ${botAdmin ? '✅ Sí' : '❌ No'}\n🛡️ Antilink: ${estado(grupo.antilink)}\n🌐 Idioma: ${grupo.language}\n🔤 Prefijo: ${grupo.prefix}`;
+  return `👥 ${BOT_NAME}\n\n📝 ${t(grupo, 'nombre')}: ${chat.title || t(grupo, 'sinNombre')}\n🆔 ${t(grupo, 'id')}: ${chat.id}\n🔗 ${t(grupo, 'username')}: ${chat.username ? `@${chat.username}` : t(grupo, 'noDisponible')}\n👤 ${t(grupo, 'miembros')}: ${miembros ?? t(grupo, 'noDisponible')}\n\n👑 ${t(grupo, 'administradores')} (${adminsHumanos.length})\n${listaAdmins}\n\n🤖 ${t(grupo, 'botAdministrador')}: ${botAdmin ? `✅ ${t(grupo, 'si')}` : `❌ ${t(grupo, 'no')}`}\n🛡️ ${t(grupo, 'antilink')}: ${estado(grupo.antilink, grupo)}\n🌐 ${t(grupo, 'idioma')}: ${grupo.language}\n🔤 ${t(grupo, 'prefijo')}: ${grupo.prefix}`;
 }
 
 module.exports = (bot) => {
   const responder = async (ctx) => {
-    if (ctx.updateType === 'callback_query') await ctx.answerCbQuery();
+    if (ctx.updateType === 'callback_query') await ctx.answerCbQuery().catch(() => {});
 
     if (!isGroup(ctx)) {
       return ctx.reply('ℹ️ Este comando solo está disponible en grupos.');
     }
 
+    const grupo = db.getGrupo(ctx.chat.id);
+
     try {
       const texto = await obtenerTexto(ctx);
-      const opciones = menuGrupo();
+      const opciones = menuGrupo(grupo);
 
       if (ctx.updateType === 'callback_query') {
-        return ctx.editMessageText(texto, opciones);
+        return ctx.editMessageText(texto, opciones).catch(() => ctx.reply(texto, opciones));
       }
 
       return ctx.reply(texto, opciones);
     } catch (error) {
-      console.error('Error al obtener información del grupo:', error.message);
-      return ctx.reply('⚠️ No pude obtener toda la información del grupo. Comprueba que tengo los permisos necesarios.');
+      console.error(`❌ Error en /grupo: ${error.message}`);
+      return ctx.reply(`⚠️ ${t(grupo, 'grupoError')}`);
     }
   };
 
