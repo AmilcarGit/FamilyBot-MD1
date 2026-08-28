@@ -1,8 +1,7 @@
 const { URL } = require('url');
 const { Markup } = require('telegraf');
+const { download, cleanup } = require('../lib/youtube');
 
-const API_URL = 'https://api.delirius.store/download/ytmp4';
-const TIMEOUT = 45000;
 const pendientes = new Map();
 
 function obtenerUrlYoutube(texto) {
@@ -16,34 +15,6 @@ function obtenerUrlYoutube(texto) {
     }
   } catch {}
   return null;
-}
-
-async function editar(ctx, texto, opciones = {}) {
-  const msg = ctx.callbackQuery?.message;
-  try {
-    if (msg?.text === texto) return;
-    if (msg?.text != null) return await ctx.editMessageText(texto, opciones);
-    if (msg?.caption != null) return await ctx.editMessageCaption(texto, opciones);
-    return await ctx.reply(texto, opciones);
-  } catch (e) {
-    if (e?.response?.error_code === 400 && /not modified|there is no text|message is not modified/i.test(e?.response?.description || '')) return;
-    throw e;
-  }
-}
-
-async function obtenerVideo(url) {
-  const controller = new AbortController();
-  const timer = setTimeout(() => controller.abort(), TIMEOUT);
-  try {
-    const api = new URL(API_URL);
-    api.searchParams.set('url', url);
-    api.searchParams.set('format', '360');
-    const response = await fetch(api, { headers: { Accept: 'application/json' }, signal: controller.signal });
-    if (!response.ok) throw new Error(`Delirius HTTP ${response.status}`);
-    const data = await response.json();
-    if (!data?.status || !data?.data?.download) throw new Error(data?.message || 'Delirius no devolvió el video.');
-    return { url: data.data.download, title: data.data.title || 'Video de YouTube' };
-  } finally { clearTimeout(timer); }
 }
 
 function botones(userId) {
@@ -65,18 +36,24 @@ module.exports = bot => {
   bot.action(/^ytmp4_download_(\d+)$/, async ctx => {
     const userId = Number(ctx.match[1]);
     if (ctx.from.id !== userId) return ctx.answerCbQuery('⚠️ Esta descarga pertenece a otro usuario.', { show_alert: true });
-    await ctx.answerCbQuery('⏳ Procesando video...').catch(() => {});
+    await ctx.answerCbQuery('⏳ Descargando video...').catch(() => {});
     const videoUrl = pendientes.get(userId);
-    if (!videoUrl) return editar(ctx, '⚠️ Esta descarga expiró. Envía nuevamente /ytmp4 <enlace>.');
+    if (!videoUrl) return ctx.reply('⚠️ Esta descarga expiró. Usa /ytmp4 nuevamente.');
+    let file;
     try {
-      await editar(ctx, '⏳ *Procesando video...*\n\n🔎 Delirius está preparando el MP4...', { parse_mode: 'Markdown' });
-      const video = await obtenerVideo(videoUrl);
-      await editar(ctx, '⬇️ *Enviando video...*\n\n🎬 ' + String(video.title).slice(0, 180), { parse_mode: 'Markdown' });
-      await ctx.replyWithVideo({ url: video.url }, { caption: `🎬 *${String(video.title).slice(0, 180)}*\n\n⚡ FamilyBot-MD`, parse_mode: 'Markdown', ...Markup.inlineKeyboard([[Markup.button.callback('🔄 Descargar otra vez', `ytmp4_again_${userId}`)]]) });
-      pendientes.delete(userId);
+      await ctx.editMessageText('⏳ *Descargando video...*\n\n⚙️ Motor local yt-dlp · máximo 360p / 49 MB', { parse_mode: 'Markdown' }).catch(() => {});
+      const video = await download(videoUrl, 'video');
+      file = video.path;
+      await ctx.replyWithVideo({ source: file }, {
+        caption: `🎬 *${String(video.title).slice(0, 180)}*\n\n⚡ FamilyBot-MD`,
+        parse_mode: 'Markdown',
+        ...Markup.inlineKeyboard([[Markup.button.callback('🔄 Descargar otra vez', `ytmp4_again_${userId}`)]])
+      });
+      await ctx.editMessageText('✅ Video enviado correctamente.').catch(() => {});
     } catch (error) {
-      const mensaje = error.name === 'AbortError' ? '⏱️ Delirius tardó demasiado en responder.' : `❌ No se pudo descargar el video.\n\n${error.message}`;
-      try { await editar(ctx, mensaje, botones(userId)); } catch { await ctx.reply(mensaje).catch(() => {}); }
+      await ctx.editMessageText(`❌ No se pudo descargar el video.\n\n${error.message}`, botones(userId)).catch(() => ctx.reply(`❌ ${error.message}`));
+    } finally {
+      if (file) cleanup(file);
     }
   });
 
@@ -84,9 +61,8 @@ module.exports = bot => {
     const userId = Number(ctx.match[1]);
     if (ctx.from.id !== userId) return ctx.answerCbQuery('⚠️ Esta descarga pertenece a otro usuario.', { show_alert: true });
     await ctx.answerCbQuery().catch(() => {});
-    const videoUrl = pendientes.get(userId);
-    if (!videoUrl) return ctx.reply('⚠️ Envía nuevamente /ytmp4 <enlace>.');
-    return ctx.reply('🎬 *YouTube MP4*\n\nPulsa el botón para descargar nuevamente.', { parse_mode: 'Markdown', ...botones(userId) });
+    if (!pendientes.has(userId)) return ctx.reply('⚠️ Usa /ytmp4 nuevamente.');
+    return ctx.reply('🎬 Pulsa para descargar nuevamente:', botones(userId));
   });
 
   bot.action(/^ytmp4_cancel_(\d+)$/, async ctx => {
@@ -94,6 +70,6 @@ module.exports = bot => {
     if (ctx.from.id !== userId) return ctx.answerCbQuery('⚠️ Esta descarga pertenece a otro usuario.', { show_alert: true });
     pendientes.delete(userId);
     await ctx.answerCbQuery('Descarga cancelada').catch(() => {});
-    return editar(ctx, '❌ Descarga de video cancelada.');
+    return ctx.editMessageText('❌ Descarga de video cancelada.').catch(() => ctx.reply('❌ Descarga de video cancelada.'));
   });
 };
