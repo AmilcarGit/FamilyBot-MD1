@@ -14,7 +14,7 @@ function teclado() {
 function comandos(grupo) {
   return `📚 *${t(grupo, 'todosComandos')}*\n\n` +
     `🏠 *${t(grupo, 'categoriaGeneral')}*\n/start — ${t(grupo, 'menuPrincipal')}\n/menu — ${t(grupo, 'menuPrincipal')}\n/ayuda — ${t(grupo, 'esteMensaje')}\n/frase — ${t(grupo, 'fraseFamilia')}\n\n` +
-    `📥 *DESCARGAS*\n/ytmp4 <url> — Descargar video de YouTube\n\n` +
+    `📥 *DESCARGAS*\n/ytmp4 <url> — Descargar video de YouTube\n/play <nombre o url> — Descargar música de YouTube\n/yts <búsqueda> — Buscar canciones en YouTube\n/dzs <búsqueda> — Buscar y descargar música de Deezer\n\n` +
     `👥 *${t(grupo, 'categoriaGrupo')}*\n/grupo — ${t(grupo, 'infoGrupo')}\n/admins — ${t(grupo, 'listaAdmins')}\n/reglas — ${t(grupo, 'reglasTitulo')}\n/setreglas <texto> — ${t(grupo, 'reglasUso')}\n/delreglas — ${t(grupo, 'reglasEliminadas')}\n\n` +
     `🛡️ *${t(grupo, 'categoriaModeracion')}*\n/seguridad — ${t(grupo, 'panelSeguridad')}\n/antilink on|off — ${t(grupo, 'moderacionLinks')}\n/mute — ${t(grupo, 'muteUso')}\n/unmute — ${t(grupo, 'unmuteUso')}\n\n` +
     `⚙️ *${t(grupo, 'categoriaConfiguracion')}*\n/config — ${t(grupo, 'configTitulo')}\n/ajustes — ${t(grupo, 'configuracion')}\n/bienvenida — ${t(grupo, 'bienvenidaTitulo')}\n/despedida — ${t(grupo, 'despedidaTitulo')}\n/idioma es|en — ${t(grupo, 'idioma')}\n/prefijo <carácter> — ${t(grupo, 'prefijo')}\n\n` +
