@@ -1,11 +1,7 @@
 const fs = require('fs');
 const path = require('path');
 const { Telegraf } = require('telegraf');
-const {
-  BOT_TOKEN,
-  BOT_NAME,
-  validarConfig
-} = require('./lib/config');
+const { BOT_TOKEN, BOT_NAME, validarConfig } = require('./lib/config');
 const { registrarMiddleware } = require('./lib/middleware');
 
 const erroresConfig = validarConfig();
@@ -23,32 +19,19 @@ let iniciado = false;
 let apagando = false;
 
 function cargarComandos() {
-  if (!fs.existsSync(commandsPath)) {
-    throw new Error('No existe la carpeta commands/.');
-  }
-
-  const archivos = fs.readdirSync(commandsPath)
-    .filter((file) => file.endsWith('.js'))
-    .sort();
-
-  if (!archivos.length) {
-    throw new Error('No se encontraron comandos en commands/.');
-  }
+  if (!fs.existsSync(commandsPath)) throw new Error('No existe la carpeta commands/.');
+  const archivos = fs.readdirSync(commandsPath).filter((file) => file.endsWith('.js')).sort();
+  if (!archivos.length) throw new Error('No se encontraron comandos en commands/.');
 
   console.log('');
   console.log('📦 Cargando comandos...');
 
   for (const file of archivos) {
     const ruta = path.join(commandsPath, file);
-
     try {
       delete require.cache[require.resolve(ruta)];
       const registrar = require(ruta);
-
-      if (typeof registrar !== 'function') {
-        throw new TypeError('El módulo debe exportar una función (bot) => {...}.');
-      }
-
+      if (typeof registrar !== 'function') throw new TypeError('El módulo debe exportar una función (bot) => {...}.');
       registrar(bot);
       comandosCargados += 1;
       console.log(`   ✅ ${file}`);
@@ -88,7 +71,6 @@ bot.catch((error, ctx) => {
   const updateType = ctx?.updateType || 'desconocido';
   const chatId = ctx?.chat?.id || 'sin chat';
   const userId = ctx?.from?.id || 'sin usuario';
-
   console.error(`⚠️ Error | update=${updateType} | chat=${chatId} | user=${userId} | ${error.message}`);
 });
 
@@ -106,10 +88,8 @@ async function iniciar() {
 async function apagar(signal) {
   if (apagando) return;
   apagando = true;
-
   console.log('');
   console.log(`🛑 Cerrando ${BOT_NAME}...`);
-
   try {
     if (iniciado) bot.stop(signal);
   } finally {
@@ -120,11 +100,7 @@ async function apagar(signal) {
 
 process.once('SIGINT', () => apagar('SIGINT'));
 process.once('SIGTERM', () => apagar('SIGTERM'));
-
-process.on('unhandledRejection', (error) => {
-  console.error(`⚠️ Promesa no manejada: ${error?.message || error}`);
-});
-
+process.on('unhandledRejection', (error) => console.error(`⚠️ Promesa no manejada: ${error?.message || error}`));
 process.on('uncaughtException', (error) => {
   console.error(`❌ Excepción no capturada: ${error.message}`);
   process.exit(1);
