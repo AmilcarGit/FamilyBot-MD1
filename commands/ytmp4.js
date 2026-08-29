@@ -1,6 +1,6 @@
 const { URL } = require('url');
 const { Markup } = require('telegraf');
-const { download, cleanup } = require('../lib/youtube');
+const { descargar } = require('../lib/lempi');
 
 const pendientes = new Map();
 
@@ -36,15 +36,13 @@ module.exports = bot => {
   bot.action(/^ytmp4_download_(\d+)$/, async ctx => {
     const userId = Number(ctx.match[1]);
     if (ctx.from.id !== userId) return ctx.answerCbQuery('⚠️ Esta descarga pertenece a otro usuario.', { show_alert: true });
-    await ctx.answerCbQuery('⏳ Descargando video...').catch(() => {});
+    await ctx.answerCbQuery('⏳ Procesando video...').catch(() => {});
     const videoUrl = pendientes.get(userId);
     if (!videoUrl) return ctx.reply('⚠️ Esta descarga expiró. Usa /ytmp4 nuevamente.');
-    let file;
     try {
-      await ctx.editMessageText('⏳ *Descargando video...*\n\n⚙️ Motor local yt-dlp · máximo 360p / 49 MB', { parse_mode: 'Markdown' }).catch(() => {});
-      const video = await download(videoUrl, 'video');
-      file = video.path;
-      await ctx.replyWithVideo({ source: file }, {
+      await ctx.editMessageText('⏳ *Descargando video...*\n\n⚡ API Lempi', { parse_mode: 'Markdown' }).catch(() => {});
+      const video = await descargar(videoUrl, 'video');
+      await ctx.replyWithVideo({ url: video.url }, {
         caption: `🎬 *${String(video.title).slice(0, 180)}*\n\n⚡ FamilyBot-MD`,
         parse_mode: 'Markdown',
         ...Markup.inlineKeyboard([[Markup.button.callback('🔄 Descargar otra vez', `ytmp4_again_${userId}`)]])
@@ -52,8 +50,6 @@ module.exports = bot => {
       await ctx.editMessageText('✅ Video enviado correctamente.').catch(() => {});
     } catch (error) {
       await ctx.editMessageText(`❌ No se pudo descargar el video.\n\n${error.message}`, botones(userId)).catch(() => ctx.reply(`❌ ${error.message}`));
-    } finally {
-      if (file) cleanup(file);
     }
   });
 
