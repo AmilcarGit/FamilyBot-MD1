@@ -10,7 +10,8 @@ function menuPrincipal(grupo) {
     [Markup.button.callback(t(grupo, 'bots'), 'menu_bots'), Markup.button.callback(t(grupo, 'seguridad'), 'menu_seguridad')],
     [Markup.button.callback(t(grupo, 'ajustes'), 'menu_ajustes'), Markup.button.callback(t(grupo, 'extras'), 'menu_extras')],
     [Markup.button.callback(t(grupo, 'ia'), 'menu_ia'), Markup.button.callback(t(grupo, 'redes'), 'menu_redes')],
-    [Markup.button.callback(t(grupo, 'ayuda'), 'menu_ayuda')]
+    [Markup.button.callback(t(grupo, 'ayuda'), 'menu_ayuda')],
+    [Markup.button.callback('📚 Todos los comandos', 'menu_todos')]
   ]);
 }
 
