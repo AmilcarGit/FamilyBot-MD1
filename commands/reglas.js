@@ -1,16 +1,13 @@
 const db = require('../lib/db');
 const { t } = require('../lib/i18n');
 const { requireAdmin, isGroup } = require('../lib/permissions');
+const { enviarMenu } = require('../lib/menu-media');
 
 function menu(grupo) {
-  return {
-    reply_markup: {
-      inline_keyboard: [
-        [{ text: t(grupo, 'grupo'), callback_data: 'menu_grupo' }, { text: t(grupo, 'ajustes'), callback_data: 'menu_ajustes' }],
-        [{ text: t(grupo, 'inicio'), callback_data: 'menu_inicio' }]
-      ]
-    }
-  };
+  return { reply_markup: { inline_keyboard: [
+    [{ text: t(grupo, 'grupo'), callback_data: 'menu_grupo' }, { text: t(grupo, 'ajustes'), callback_data: 'menu_ajustes' }],
+    [{ text: t(grupo, 'inicio'), callback_data: 'menu_inicio' }]
+  ] } };
 }
 
 function textoReglas(grupo, chatTitle) {
@@ -21,14 +18,9 @@ function textoReglas(grupo, chatTitle) {
 module.exports = (bot) => {
   const mostrar = async (ctx) => {
     if (ctx.updateType === 'callback_query') await ctx.answerCbQuery().catch(() => {});
-
     if (!isGroup(ctx)) return ctx.reply(t({}, 'soloGrupoReglas'));
-
     const grupo = db.getGrupo(ctx.chat.id);
-    const texto = textoReglas(grupo, ctx.chat.title || 'Grupo');
-
-    if (ctx.updateType === 'callback_query') return ctx.editMessageText(texto, menu(grupo));
-    return ctx.reply(texto, menu(grupo));
+    return enviarMenu(ctx, textoReglas(grupo, ctx.chat.title || 'Grupo'), menu(grupo), null);
   };
 
   bot.command('reglas', mostrar);
@@ -37,13 +29,10 @@ module.exports = (bot) => {
   bot.command('setreglas', async (ctx) => {
     if (!isGroup(ctx)) return ctx.reply(t({}, 'soloGrupoReglas'));
     if (!(await requireAdmin(ctx))) return;
-
     const grupo = db.getGrupo(ctx.chat.id);
     const texto = ctx.message.text.replace(/^\/setreglas(?:@\w+)?\s*/i, '').trim();
-
     if (!texto) return ctx.reply(t(grupo, 'reglasUso'));
     if (texto.length > 4000) return ctx.reply(t(grupo, 'reglasLargo'));
-
     const actualizado = db.setGrupo(ctx.chat.id, { rules: texto });
     return ctx.reply(t(actualizado, 'reglasGuardadas'));
   });
@@ -51,7 +40,6 @@ module.exports = (bot) => {
   bot.command('delreglas', async (ctx) => {
     if (!isGroup(ctx)) return ctx.reply(t({}, 'soloGrupoReglas'));
     if (!(await requireAdmin(ctx))) return;
-
     const grupo = db.getGrupo(ctx.chat.id);
     db.setGrupo(ctx.chat.id, { rules: '' });
     return ctx.reply(t(grupo, 'reglasEliminadas'));
