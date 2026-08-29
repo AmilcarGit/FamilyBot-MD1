@@ -16,6 +16,17 @@ function textoAjustes(grupo) {
   return `${t(grupo, 'ajustes', { bot: BOT_NAME })}\n\n${t(grupo, 'antilink')}: ${grupo.antilink ? `✅ ${t(grupo, 'activado')}` : `❌ ${t(grupo, 'desactivado')}`}\n${t(grupo, 'idioma')}: ${grupo.language}\n${t(grupo, 'prefijo')}: ${grupo.prefix}\n\n${t(grupo, 'seleccionar')}`;
 }
 
+function menuIdioma(grupo) {
+  return { reply_markup: { inline_keyboard: [
+    [{ text: t(grupo, 'espanol'), callback_data: 'ajustes_idioma_es' }, { text: t(grupo, 'ingles'), callback_data: 'ajustes_idioma_en' }],
+    [{ text: t(grupo, 'inicio'), callback_data: 'menu_ajustes' }]
+  ] } };
+}
+
+function menuPrefijo(grupo) {
+  return { reply_markup: { inline_keyboard: [[{ text: t(grupo, 'inicio'), callback_data: 'menu_ajustes' }]] } };
+}
+
 module.exports = (bot) => {
   const responder = async (ctx) => {
     if (ctx.updateType === 'callback_query') await ctx.answerCbQuery().catch(() => {});
@@ -39,7 +50,7 @@ module.exports = (bot) => {
     await ctx.answerCbQuery().catch(() => {});
     if (!(await requireAdmin(ctx))) return;
     const grupo = db.getGrupo(ctx.chat.id);
-    return ctx.editMessageText(`${t(grupo, 'idiomaGrupo')}\n\n${t(grupo, 'idiomaActual', { language: grupo.language })}\n\n${t(grupo, 'seleccionarIdioma')}`, { reply_markup: { inline_keyboard: [[{ text: t(grupo, 'espanol'), callback_data: 'ajustes_idioma_es' }, { text: t(grupo, 'ingles'), callback_data: 'ajustes_idioma_en' }], [{ text: t(grupo, 'inicio'), callback_data: 'menu_ajustes' }]] } });
+    return enviarMenu(ctx, `${t(grupo, 'idiomaGrupo')}\n\n${t(grupo, 'idiomaActual', { language: grupo.language })}\n\n${t(grupo, 'seleccionarIdioma')}`, menuIdioma(grupo), null);
   });
 
   for (const idioma of ['es', 'en']) {
@@ -55,7 +66,7 @@ module.exports = (bot) => {
     await ctx.answerCbQuery().catch(() => {});
     if (!(await requireAdmin(ctx))) return;
     const grupo = db.getGrupo(ctx.chat.id);
-    return ctx.editMessageText(`${t(grupo, 'prefijoTitulo')}\n\n${t(grupo, 'prefijoActual', { prefix: grupo.prefix })}\n\n${t(grupo, 'prefijoAyuda')}`, { reply_markup: { inline_keyboard: [[{ text: t(grupo, 'inicio'), callback_data: 'menu_ajustes' }]] } });
+    return enviarMenu(ctx, `${t(grupo, 'prefijoTitulo')}\n\n${t(grupo, 'prefijoActual', { prefix: grupo.prefix })}\n\n${t(grupo, 'prefijoAyuda')}`, menuPrefijo(grupo), null);
   });
 
   bot.command('idioma', async (ctx) => {
