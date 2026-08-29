@@ -4,7 +4,7 @@
   "description": "FamilyBot-MD - Una Familia, Un Bot, Sin Límites",
   "main": "index.js",
   "scripts": {
-    "start": "node index.js"
+    "start": "node lib/git-pull.js && node index.js"
   },
   "author": "AmilcarGit",
   "license": "MIT",
