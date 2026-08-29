@@ -1,7 +1,7 @@
 const { URL } = require('url');
 const { Markup } = require('telegraf');
 const yts = require('yt-search');
-const { download, cleanup } = require('../lib/youtube');
+const { descargar } = require('../lib/lempi');
 
 const pendientes = new Map();
 
@@ -49,15 +49,13 @@ module.exports = bot => {
   bot.action(/^play_download_(\d+)$/, async ctx => {
     const userId = Number(ctx.match[1]);
     if (ctx.from.id !== userId) return ctx.answerCbQuery('⚠️ Esta descarga pertenece a otro usuario.', { show_alert: true });
-    await ctx.answerCbQuery('⏳ Descargando audio...').catch(() => {});
+    await ctx.answerCbQuery('⏳ Procesando audio...').catch(() => {});
     const videoUrl = pendientes.get(userId);
     if (!videoUrl) return ctx.reply('⚠️ Esta descarga expiró. Usa /play nuevamente.');
-    let file;
     try {
-      await ctx.editMessageText('⏳ *Descargando música...*\n\n⚙️ Motor local yt-dlp', { parse_mode: 'Markdown' }).catch(() => {});
-      const audio = await download(videoUrl, 'audio');
-      file = audio.path;
-      await ctx.replyWithAudio({ source: file }, {
+      await ctx.editMessageText('⏳ *Descargando música...*\n\n⚡ API Lempi', { parse_mode: 'Markdown' }).catch(() => {});
+      const audio = await descargar(videoUrl, 'audio');
+      await ctx.replyWithAudio({ url: audio.url }, {
         title: String(audio.title).slice(0, 180),
         caption: `🎵 *${String(audio.title).slice(0, 180)}*\n\n⚡ FamilyBot-MD`,
         parse_mode: 'Markdown',
@@ -66,8 +64,6 @@ module.exports = bot => {
       await ctx.editMessageText('✅ Música enviada correctamente.').catch(() => {});
     } catch (error) {
       await ctx.editMessageText(`❌ No se pudo descargar la música.\n\n${error.message}`, botones(userId)).catch(() => ctx.reply(`❌ ${error.message}`));
-    } finally {
-      if (file) cleanup(file);
     }
   });
 
