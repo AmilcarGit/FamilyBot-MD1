@@ -1,6 +1,6 @@
 const { Markup } = require('telegraf');
 const yts = require('yt-search');
-const { download, cleanup } = require('../lib/youtube');
+const { descargar } = require('../lib/lempi');
 
 const resultados = new Map();
 
@@ -20,35 +20,31 @@ function menuSeleccion(userId, index) {
   ]);
 }
 
-async function descargar(ctx, userId, index, tipo) {
+async function descargarMedia(ctx, userId, index, tipo) {
   if (ctx.from.id !== userId) return ctx.answerCbQuery('⚠️ Esta búsqueda pertenece a otro usuario.', { show_alert: true });
   const v = resultados.get(userId)?.[index];
   if (!v) return ctx.answerCbQuery('⚠️ Resultado expirado.', { show_alert: true });
   await ctx.answerCbQuery(tipo === 'audio' ? '🎧 Descargando música...' : '🎬 Descargando video...').catch(() => {});
-  let file;
   try {
-    await ctx.editMessageText(`⏳ *Descargando ${tipo === 'audio' ? 'música' : 'video'}...*\n\n⚙️ Motor local yt-dlp`, { parse_mode: 'Markdown' }).catch(() => {});
-    const media = await download(v.url, tipo);
-    file = media.path;
+    await ctx.editMessageText(`⏳ *Descargando ${tipo === 'audio' ? 'música' : 'video'}...*\n\n⚡ API Lempi`, { parse_mode: 'Markdown' }).catch(() => {});
+    const media = await descargar(v.url, tipo);
     if (tipo === 'audio') {
-      await ctx.replyWithAudio({ source: file }, {
-        title: String(media.title).slice(0, 180),
-        caption: `🎵 *${String(media.title).slice(0, 180)}*\n\n⚡ FamilyBot-MD`,
+      await ctx.replyWithAudio({ url: media.url }, {
+        title: String(media.title || v.title).slice(0, 180),
+        caption: `🎵 *${String(media.title || v.title).slice(0, 180)}*\n\n⚡ FamilyBot-MD`,
         parse_mode: 'Markdown',
-        ...Markup.inlineKeyboard([[Markup.button.callback('🔄 Música otra vez', `yts_audio_${userId}_${index}`)],[Markup.button.callback('🎬 Descargar video', `yts_video_${userId}_${index}`)],[Markup.button.callback('🔎 Nueva búsqueda', 'yts_new')]])
+        ...Markup.inlineKeyboard([[Markup.button.callback('🔄 Música otra vez', `yts_audio_${userId}_${index}`)], [Markup.button.callback('🎬 Descargar video', `yts_video_${userId}_${index}`)], [Markup.button.callback('🔎 Nueva búsqueda', 'yts_new')]])
       });
     } else {
-      await ctx.replyWithVideo({ source: file }, {
-        caption: `🎬 *${String(media.title).slice(0, 180)}*\n\n⚡ FamilyBot-MD`,
+      await ctx.replyWithVideo({ url: media.url }, {
+        caption: `🎬 *${String(media.title || v.title).slice(0, 180)}*\n\n⚡ FamilyBot-MD`,
         parse_mode: 'Markdown',
-        ...Markup.inlineKeyboard([[Markup.button.callback('🔄 Video otra vez', `yts_video_${userId}_${index}`)],[Markup.button.callback('🎧 Descargar música', `yts_audio_${userId}_${index}`)],[Markup.button.callback('🔎 Nueva búsqueda', 'yts_new')]])
+        ...Markup.inlineKeyboard([[Markup.button.callback('🔄 Video otra vez', `yts_video_${userId}_${index}`)], [Markup.button.callback('🎧 Descargar música', `yts_audio_${userId}_${index}`)], [Markup.button.callback('🔎 Nueva búsqueda', 'yts_new')]])
       });
     }
     await ctx.editMessageText('✅ Archivo enviado correctamente.').catch(() => {});
   } catch (error) {
     await ctx.editMessageText(`❌ No se pudo descargar.\n\n${error.message}`, menuSeleccion(userId, index)).catch(() => ctx.reply(`❌ ${error.message}`));
-  } finally {
-    if (file) cleanup(file);
   }
 }
 
@@ -85,8 +81,8 @@ module.exports = bot => {
     return ctx.editMessageText(`🎵 *${v.title.slice(0, 180)}*\n\n👤 ${v.channel}\n⏱️ ${v.duration}\n\n👇 Elige qué descargar:`, { parse_mode: 'Markdown', ...menuSeleccion(userId, index) }).catch(() => ctx.reply('👇 Elige qué descargar:', menuSeleccion(userId, index)));
   });
 
-  bot.action(/^yts_audio_(\d+)_(\d+)$/, ctx => descargar(ctx, Number(ctx.match[1]), Number(ctx.match[2]), 'audio'));
-  bot.action(/^yts_video_(\d+)_(\d+)$/, ctx => descargar(ctx, Number(ctx.match[1]), Number(ctx.match[2]), 'video'));
+  bot.action(/^yts_audio_(\d+)_(\d+)$/, ctx => descargarMedia(ctx, Number(ctx.match[1]), Number(ctx.match[2]), 'audio'));
+  bot.action(/^yts_video_(\d+)_(\d+)$/, ctx => descargarMedia(ctx, Number(ctx.match[1]), Number(ctx.match[2]), 'video'));
 
   bot.action(/^yts_back_(\d+)$/, async ctx => {
     const userId = Number(ctx.match[1]);
