@@ -36,4 +36,22 @@ module.exports = (bot) => {
   bot.action('config_idioma', async (ctx) => { await ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; const grupo = db.getGrupo(ctx.chat.id); return ctx.editMessageText(`${t(grupo, 'seleccionarIdioma')}\n\n${t(grupo, 'idiomaActual', { language: grupo.language === 'en' ? 'English' : 'Español' })}`, { reply_markup: { inline_keyboard: [[{ text: t(grupo, 'espanol'), callback_data: 'config_lang_es' }, { text: t(grupo, 'ingles'), callback_data: 'config_lang_en' }], [{ text: `⚙️ ${t(grupo, 'configTitulo')}`, callback_data: 'menu_config' }]] } }); });
   bot.action(/^config_lang_(es|en)$/, async (ctx) => { await ctx.answerCbQuery().catch(() => {}); if (!(await requireAdmin(ctx))) return; db.setGrupo(ctx.chat.id, { language: ctx.match[1] }); return mostrar(ctx); });
   bot.action('config_prefijo', async (ctx) => { await ctx.answerCbQuery().catch(() => {}); const grupo = db.getGrupo(ctx.chat.id); return ctx.editMessageText(`${t(grupo, 'prefijoTitulo')}\n\n${t(grupo, 'prefijoActual', { prefix: grupo.prefix || '/' })}\n\n${t(grupo, 'prefijoAyuda')}`, { reply_markup: { inline_keyboard: [[{ text: `⚙️ ${t(grupo, 'configTitulo')}`, callback_data: 'menu_config' }]] } }); });
+
+  bot.command('idioma', async (ctx) => {
+    if (!(await requireAdmin(ctx))) return;
+    const grupo = db.getGrupo(ctx.chat.id);
+    const idioma = ctx.message.text.trim().split(/\s+/)[1]?.toLowerCase();
+    if (!['es', 'en'].includes(idioma)) return ctx.reply(t(grupo, 'usoIdioma'));
+    const actualizado = db.setGrupo(ctx.chat.id, { language: idioma });
+    return ctx.reply(t(actualizado, 'idiomaActualizado', { language: idioma }));
+  });
+
+  bot.command('prefijo', async (ctx) => {
+    if (!(await requireAdmin(ctx))) return;
+    const grupo = db.getGrupo(ctx.chat.id);
+    const prefijo = ctx.message.text.trim().split(/\s+/)[1];
+    if (!prefijo || prefijo.length > 2 || !/^[!./#?$]+$/.test(prefijo)) return ctx.reply(t(grupo, 'usoPrefijo'));
+    db.setGrupo(ctx.chat.id, { prefix: prefijo });
+    return ctx.reply(t(grupo, 'prefijoGuardado', { prefix: prefijo }));
+  });
 };
