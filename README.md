@@ -1,8 +1,34 @@
-# 👑 FamilyBot-MD
+<div align="center">
 
-> Una Familia · Un Bot · Sin Límites ❤️
+# 👑 FamilyBot-MD1
 
-Bot de Telegram con panel de comandos (Inicio, Grupo, Bots, Seguridad, Ajustes, Extras, Redes, Ayuda), listo para correr en **Termux**.
+### Una Familia · Un Bot · Sin Límites ❤️
+
+**Bot de Telegram con panel de comandos para administrar y personalizar tu experiencia.**
+
+<p>
+  <a href="https://github.com/AmilcarGit/FamilyBot-MD1"><img src="https://img.shields.io/badge/GitHub-FamilyBot--MD1-181717?style=for-the-badge&logo=github" alt="Repositorio"></a>
+  <a href="https://github.com/AmilcarGit/FamilyBot-MD1/issues"><img src="https://img.shields.io/badge/Soporte-Issues-8957e5?style=for-the-badge&logo=github" alt="Soporte"></a>
+  <a href="https://core.telegram.org/bots"><img src="https://img.shields.io/badge/Plataforma-Telegram-26A5E4?style=for-the-badge&logo=telegram&logoColor=white" alt="Telegram"></a>
+  <a href="https://nodejs.org/"><img src="https://img.shields.io/badge/Node.js-18%2B-339933?style=for-the-badge&logo=nodedotjs&logoColor=white" alt="Node.js"></a>
+</p>
+
+[Características](#-características) · [Requisitos](#-requisitos) · [Instalación](#-instalación-en-termux) · [Configuración](#-configuración) · [Solución de problemas](#-solución-de-problemas) · [Colaborar](#-colaborar)
+
+</div>
+
+---
+
+## 📌 Información
+
+FamilyBot-MD1 es un bot de **Telegram**, no de WhatsApp. Incluye un panel de comandos con secciones como Inicio, Grupo, Bots, Seguridad, Ajustes, Extras, Redes y Ayuda. Revisa los comandos incluidos en el código antes de asumir que una función está habilitada.
+
+## ✨ Características
+
+- Panel de comandos organizado por secciones.
+- Funciones para grupos y ajustes, según la configuración del bot.
+- Ejecución en Termux o en sistemas compatibles con Node.js.
+- Configuración mediante variables de entorno cuando el proyecto lo requiere.
 
 ---
 
@@ -124,3 +150,36 @@ Para agregar un comando nuevo, solo crea un archivo `commands/nombre.js` que exp
 ---
 
 Creado con ❤️ — personaliza los nombres, frases y enlaces en `lib/config.js` y `commands/redes.js` a tu gusto.
+
+
+## 🖥️ Instalación en PC
+
+Instala Node.js 18 o superior y Git, y luego ejecuta en una terminal:
+
+```bash
+git clone https://github.com/AmilcarGit/FamilyBot-MD1.git
+cd FamilyBot-MD1
+npm install
+npm start
+```
+
+## ⚙️ Configuración
+
+1. Crea tu bot desde [@BotFather](https://t.me/BotFather) y copia el token.
+2. Configura el token según el método que documente el código del repositorio. Si el proyecto utiliza `.env`, mantén ese archivo local y comprueba que esté incluido en `.gitignore`.
+3. Inicia el bot con `npm start` y revisa los mensajes de la terminal.
+4. No publiques el token ni lo pegues en Issues o capturas.
+
+## 🧯 Solución de problemas
+
+- **El bot no responde:** verifica que el proceso siga activo, que el token sea correcto y que hayas iniciado una conversación con el bot en Telegram.
+- **Falla `npm install`:** comprueba la versión de Node.js y revisa el mensaje de error antes de repetir la instalación.
+- **No aparecen comandos:** revisa los permisos del bot, los handlers y la configuración existente; los comandos disponibles dependen de la versión del código.
+- **Necesitas ayuda:** abre un [Issue](https://github.com/AmilcarGit/FamilyBot-MD1/issues) e incluye el error sin tokens ni datos privados.
+
+## 🤝 Colaborar
+
+Lee [CONTRIBUTING.md](CONTRIBUTING.md), utiliza las plantillas de Issues y Pull Requests, y describe las pruebas que hayas ejecutado.
+
+Consulta también la [política de seguridad](SECURITY.md) antes de informar de una vulnerabilidad.
+
