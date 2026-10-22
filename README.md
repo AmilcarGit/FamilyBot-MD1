@@ -24,8 +24,8 @@ pkg update -y && pkg upgrade -y
 pkg install nodejs-lts git -y
 
 # 3. Clona tu repositorio
-git clone https://github.com/TU-USUARIO/FamilyBot-MD.git
-cd FamilyBot-MD
+git clone https://github.com/AmilcarGit/FamilyBot-MD1.git
+cd FamilyBot-MD1
 
 # 4. Instala las dependencias
 npm install
@@ -72,21 +72,11 @@ También instala `termux-wake-lock` (viene con Termux:API) para evitar que Andro
 
 ---
 
-## 📤 Subir este proyecto a GitHub
+## 📤 Publicar una versión propia
 
-Si aún no tienes el repo creado:
+Este proyecto ya está publicado en [AmilcarGit/FamilyBot-MD1](https://github.com/AmilcarGit/FamilyBot-MD1). Si quieres mantener tu propia variante, crea primero un [fork](https://github.com/AmilcarGit/FamilyBot-MD1/fork) y utiliza la URL de tu fork como remoto.
 
-```bash
-cd FamilyBot-MD
-git init
-git add .
-git commit -m "Primer commit - FamilyBot-MD"
-git branch -M main
-git remote add origin https://github.com/TU-USUARIO/FamilyBot-MD.git
-git push -u origin main
-```
-
-> ⚠️ El archivo `.env` con tu token **nunca se sube** gracias al `.gitignore` incluido. Nunca subas tu token real a GitHub.
+> ⚠️ El archivo `.env` con tu token **nunca se sube**. Comprueba que `.env` está ignorado por Git y nunca publiques tu token real en GitHub.
 
 ---
 
